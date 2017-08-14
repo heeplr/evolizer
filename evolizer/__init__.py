@@ -8,22 +8,17 @@ class Individual(object):
         self.param_choices = param_choices
         # Create a random individual
         self.params = {}
-        # hardcoded parameters
-        self.h_param_choices = {
-            'fertility' : range(1,10)
-        }
-        self.h_params = {}
+        # add hardcoded parameters
+        self.param_choices['fertility'] = range(1,10)
         # random choice for every parameter
         for key in self.param_choices:
             self.params[key] = random.choice(self.param_choices[key])
-        for key in self.h_param_choices:
-            self.h_params[key] = random.choice(self.h_param_choices[key])
 
     def __repr__(self):
         return "<{}(fitness={}, fertility={})>".format(
             self.__class__.__name__,
             self.fitness(),
-            self.h_params['fertility']
+            self.params['fertility']
         )
 
     def live(self):
@@ -37,18 +32,10 @@ class Individual(object):
     def mutate(self):
         """Randomly mutate individual."""
 
-        # 50/50 chance to mutate normal or hardcoded param
-        if random.random() > 0.5:
-            choices = self.param_choices
-            params = self.params
-        else:
-            choices = self.h_param_choices
-            params = self.h_params
-
         # Choose a random key.
-        mutation = random.choice(list(choices.keys()))
+        mutation = random.choice(list(self.param_choices.keys()))
         # Mutate one of the params.
-        params[mutation] = random.choice(choices[mutation])
+        self.params[mutation] = random.choice(self.param_choices[mutation])
 
     @staticmethod
     def crossover(mother, father):
@@ -63,7 +50,7 @@ class Individual(object):
 
         """
         children = []
-        for _ in range(mother.h_params['fertility']):
+        for _ in range(mother.params['fertility']):
 
             child_params = {}
 

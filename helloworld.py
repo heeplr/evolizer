@@ -23,7 +23,7 @@ class Candidate(Individual):
     def __repr__(self):
         return "<Candidate(fitness={}, fertility={}, msg=\"{}\")>".format(
             self.fitness(),
-            self.h_params['fertility'],
+            self.params['fertility'],
             self.params['0'] +
             self.params['1'] +
             self.params['2'] +

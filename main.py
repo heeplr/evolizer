@@ -82,19 +82,8 @@ if __name__ == '__main__':
     # create evolver
     evolver = Evolver(retain=0.4, random_select=0.1, mutate_chance=0.2)
 
-    # Evolve the generation.
-    for g in xrange(generations):
-
-        # evaluate current population
-        for i in individuals:
-            # let the individual live a life according to its parameters
-            i.live()
-
-        print evolver.avg_fitness(individuals)
-
-        # Evolve, except on the last iteration.
-        if g != generations - 1:
-            individuals = evolver.evolve(individuals)
+    # run evolver
+    individuals = evolver.optimize(individuals, generations)
 
     # Print out the top 5 networks.
     print individuals[:5]

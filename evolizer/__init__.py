@@ -156,6 +156,24 @@ class Evolver(object):
 
         return parents
 
+    def optimize(self, individuals, generations=100):
+        # evolve all generations
+        for g in xrange(generations):
+
+            # evaluate current population
+            for i in individuals:
+                # let the individual live a life according to its parameters
+                i.live()
+
+            print self.avg_fitness(individuals)
+
+            # Evolve, except on the last iteration.
+            if g != generations - 1:
+                individuals = self.evolve(individuals)
+
+        # last generation
+        return individuals
+
     @staticmethod
     def avg_fitness(population):
         return sum(map(lambda x: x.fitness(), population)) / len(population)

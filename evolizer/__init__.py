@@ -10,7 +10,7 @@ class Individual(object):
         self.params = {}
         # hardcoded parameters
         self.h_param_choices = {
-            'fertility' : range(10)
+            'fertility' : range(1,10)
         }
         self.h_params = {}
         # random choice for every parameter

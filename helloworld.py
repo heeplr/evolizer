@@ -3,7 +3,7 @@
 from evolizer import Individual, Evolver
 
 
-class Candidate(Individual):
+class HelloGreeter(Individual):
     PARAM_CHOICES = {
         '0': "abcdefghijklmnopqrstuvwxyz",
         '1': "abcdefghijklmnopqrstuvwxyz",
@@ -18,10 +18,10 @@ class Candidate(Individual):
     }
 
     def __init__(self):
-        super(Candidate, self).__init__(Candidate.PARAM_CHOICES)
+        super(HelloGreeter, self).__init__(HelloGreeter.PARAM_CHOICES)
 
     def __repr__(self):
-        return "<Candidate(fitness={}, fertility={}, msg=\"{}\")>".format(
+        return "<HelloGreeter(fitness={}, fertility={}, msg=\"{}\")>".format(
             self.fitness(),
             self.params['fertility'],
             self.params['0'] +
@@ -77,7 +77,7 @@ if __name__ == '__main__':
     # create population
     individuals = []
     for i in xrange(population):
-        individuals += [ Candidate() ]
+        individuals += [ HelloGreeter() ]
 
     # create evolver
     evolver = Evolver(retain=0.4, random_select=0.1, mutate_chance=0.2)

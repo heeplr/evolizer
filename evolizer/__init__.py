@@ -136,7 +136,7 @@ class Evolver(object):
         if self.lucky_chance == 1.0:
             raise ValueError("keeping every individual for breeding would disable selection")
         # all randomness makes no sense
-        if freak_chance = 1.0:
+        if freak_chance == 1.0:
             raise ValueError("100% freaks will prevent evolution")
 
     def evolve(self, population):

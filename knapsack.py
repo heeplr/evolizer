@@ -28,8 +28,8 @@ class KnapSack(Individual):
 
 
 if __name__ == '__main__':
-    generations = 200  # Number of times to evole/breed the population.
-    population = 40  # Number of individuals in each generation.
+    generations = 300  # Number of times to evole/breed the population.
+    population = 10  # Number of individuals in each generation.
 
     # create initial population
     individuals = []

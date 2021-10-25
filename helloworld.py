@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 
 from evolizer import Individual, Evolver
 
@@ -17,13 +17,9 @@ class HelloGreeter(Individual):
         '9' : "abcdefghijklmnopqrstuvwxyz",
     }
 
-    def __init__(self):
-        super(HelloGreeter, self).__init__(HelloGreeter.PARAM_CHOICES)
-
     def __repr__(self):
-        return "<HelloGreeter(fitness={}, fertility={}, msg=\"{}\")>".format(
+        return "<HelloGreeter(fitness={}, msg=\"{}\")>".format(
             self.fitness(),
-            self.params['fertility'],
             self.params['0'] +
             self.params['1'] +
             self.params['2'] +
@@ -70,20 +66,33 @@ class HelloGreeter(Individual):
 
         return fitness
 
-if __name__ == '__main__':
-    generations = 1000  # Number of times to evole the population.
-    population = 40  # Number of networks in each generation.
+    def finished(self):
+        """return true if we got perfect result"""
+        return bool(all([
+            self.params['0'] == 'h',
+            self.params['1'] == 'e',
+            self.params['2'] == 'l',
+            self.params['3'] == 'l',
+            self.params['4'] == 'o',
+            self.params['5'] == 'w',
+            self.params['6'] == 'o',
+            self.params['7'] == 'r',
+            self.params['8'] == 'l',
+            self.params['9'] == 'd'
+        ]))
 
-    # create population
+if __name__ == '__main__':
+    generations = 1000  # Number of times to evole/breed the population.
+    population = 40  # Number of individuals in each generation.
+
+    # create initial population
     individuals = []
-    for i in xrange(population):
+    for i in range(population):
         individuals += [ HelloGreeter() ]
 
     # create evolver
-    evolver = Evolver(retain=0.4, random_select=0.1, mutate_chance=0.2)
+    evolver = Evolver(retain=0.4, lucky_chance=0.1, mutate_chance=0.2)
 
     # run evolver
     individuals = evolver.optimize(individuals, generations)
 
-    # Print out the top 5 networks.
-    print individuals[:5]

@@ -28,7 +28,7 @@ class KnapSack(Individual):
 
 
 if __name__ == '__main__':
-    generations = 300  # Number of times to evole/breed the population.
+    generations = 200  # Number of times to evole/breed the population.
     population = 10  # Number of individuals in each generation.
 
     # create initial population
@@ -36,7 +36,7 @@ if __name__ == '__main__':
     for i in range(population):
         individuals += [ KnapSack() ]
     # create evolver
-    evolver = Evolver(retain=0.4, lucky_chance=0.1, mutate_chance=0.2)
+    evolver = Evolver(retain=0.4, lucky_chance=0.1, mutate_chance=0.5)
 
     # run evolver
     individuals = evolver.optimize(individuals, generations)

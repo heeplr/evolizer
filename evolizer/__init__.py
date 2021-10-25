@@ -1,33 +1,53 @@
+"""simple evolutionary optimizer"""
 
 import random
 
-class Individual(object):
 
-    def __init__(self, param_choices=None):
+class Individual(object):
+    """one individual with a genotype and phenotype"""
+
+    # the genome
+    PARAM_CHOICES = {}
+    param_choices = {}
+
+    def __init__(self, param_choices=None, params={}):
+        """
+        :param param_choices: initial dictionary of parameter:possible_values
+        :param params: initial dictionary of parameter:value (will be generated randomly if unset)
+        """
         # store all possible parameters
-        self.param_choices = param_choices
-        # Create a random individual
-        self.params = {}
-        # add hardcoded parameters
-        self.param_choices['fertility'] = range(1,10)
-        # random choice for every parameter
-        for key in self.param_choices:
-            self.params[key] = random.choice(self.param_choices[key])
+        if self.PARAM_CHOICES:
+            self.param_choices = { **self.param_choices, **self.PARAM_CHOICES }
+        if param_choices:
+            self.param_choices = { **self.param_choices, **param_choices }
+        # place to remember params that were evaluated last so we don't
+        # evaluate the same params twice
+        self.evaluated_params = None
+        # genotype of this individual
+        self.params = params
+        # got params already?
+        if len(self.params) > 0:
+            return
+        # create new random genotype
+        self.shuffle()
 
     def __repr__(self):
-        return "<{}(fitness={}, fertility={})>".format(
-            self.__class__.__name__,
-            self.fitness(),
-            self.params['fertility']
-        )
+        return f"<{self.__class__.__name__}(fitness={self.fitness()}, params=\"{self.params}\")>"
 
     def live(self):
         """use self.params to live"""
         pass
 
     def fitness(self):
-       """determine fitness of this individual"""
+       """Returns fitness of this individual as float. The larger the fitter."""
        raise NotImplementedError("we need a fitness() function")
+
+    def finished(self):
+        """
+        check if we can finish early
+        :result: true if this individual is perfect, false to carry on
+        """
+        return False
 
     def mutate(self):
         """Randomly mutate individual."""
@@ -36,6 +56,12 @@ class Individual(object):
         mutation = random.choice(list(self.param_choices.keys()))
         # Mutate one of the params.
         self.params[mutation] = random.choice(self.param_choices[mutation])
+
+    def shuffle(self):
+        """create new random genome (params) from genes (param_choices)"""
+        # random choice for every parameter
+        for key in self.param_choices:
+            self.params[key] = random.choice(self.param_choices[key])
 
     @staticmethod
     def crossover(mother, father):
@@ -49,114 +75,160 @@ class Individual(object):
             (list): Two network objects
 
         """
-        children = []
-        for _ in range(mother.params['fertility']):
+        child_params = {}
 
-            child_params = {}
+        # Loop through the parameters and pick params for the kid.
+        for param in mother.param_choices:
+            child_params[param] = random.choice(
+                [mother.params[param], father.params[param]]
+            )
 
-            # Loop through the parameters and pick params for the kid.
-            for param in mother.param_choices:
-                child_params[param] = random.choice(
-                    [mother.params[param], father.params[param]]
-                )
+        # Now create a new Indidvidual object.
+        child = mother.__class__(
+            params=child_params, param_choices=mother.param_choices
+        )
+        return child
 
-            # Now create a new Indidvidual object.
-            child = mother.__class__()
-            child.params = child_params
-
-            children += [ child ]
-
-        return children
 
 class Evolver(object):
     """genetic algorithm evolution helper class"""
 
-    def __init__(self, retain=0.4,
-                 random_select=0.1, mutate_chance=0.2):
+    def __init__(self, retain=0.4, lucky_chance=0.1, mutate_chance=0.2,
+                       freak_chance=0, best_count=10, elite_count=5,
+                       min_childcount=1, max_childcount=1):
         """:param retain (float): Percentage of population to retain after
-                each generation
-           :param random_select (float): Probability of a rejected network
-                remaining in the population
-           :param mutate_chance (float): Probability a network will be
-                randomly mutated
+                each generation (individuals that can reproduce again)
+           :param lucky_chance (float): Probability of a rejected individual
+                to remain in the population
+           :param mutate_chance (float): Probability of an individual to
+                be randomly mutated
+           :param freak_chance (float): Probability of a new completely
+                random individual to join a generation for breeding
+           :param best_count (int): top-n individuals to display after
+                last generation
+           :param elite_count (int): groupsize of all-time best performing
+                individuals
+           :param min_childcount (int): minimum amount of children two parents have
+           :param max_childcount (int): maximum amount of children two parents can have
         """
+        self.freak_chance = freak_chance
         self.mutate_chance = mutate_chance
-        self.random_select = random_select
+        self.lucky_chance = lucky_chance
         self.retain = retain
+        self.best_count = best_count
+        self.elite_count = elite_count
+        self.min_childcount = min_childcount
+        self.max_childcount = max_childcount
+        # all-time best performers
+        self.elite = []
 
     def evolve(self, population):
         """evolve one generation"""
 
-        # Get scores for each network.
+        # Get scores for each individual.
         graded = sorted(population, key=lambda i: i.fitness(), reverse=True)
 
         # Get the number we want to keep for the next gen.
         retain_length = int(len(graded)*self.retain)
 
-        # Get the number we want to keep for the next gen.
-        retain_length = int(len(graded)*self.retain)
-
-        # The parents are every network we want to keep.
+        # possible parents we want to breed.
         parents = graded[:retain_length]
 
         # For those we aren't keeping, randomly keep some anyway.
         for individual in graded[retain_length:]:
-            if self.random_select > random.random():
+            if self.lucky_chance > random.random():
                 parents +=  [ individual ]
 
-        # Randomly mutate some of the networks we're keeping.
-        for individual in parents:
-            if self.mutate_chance > random.random():
-                individual.mutate()
-
-        # Now find out how many spots we have left to fill.
+        # Now find out how many childre we need to meet population goal
         parents_length = len(parents)
         desired_length = len(population) - parents_length
-        children = []
 
-        # Add children, which are bred from two remaining networks.
+        # add a freak?
+        if self.freak_chance >= random.random():
+            # shuffle genome of random parent
+            # (same as removing a parent and adding a freak)
+            freak = random.choice(parents)
+            freak.shuffle()
+
+        # Add children, which are bred from two random parents.
+        children = []
         while len(children) < desired_length:
 
             # Get a random mom and dad.
-            male = random.randint(0, parents_length-1)
-            female = random.randint(0, parents_length-1)
+            male_idx = random.randint(0, parents_length-1)
+            female_idx = random.randint(0, parents_length-1)
+            # Assure they aren't the same individual...
+            if male_idx == female_idx:
+                continue
+            # determine childcount
+            childcount = random.randint(self.min_childcount, self.max_childcount)
+            # don't overcrowd population
+            if len(children) + childcount > desired_length:
+                childcount = desired_length - len(children)
+            # breed n children
+            for n in range(childcount):
+                # breed new individual
+                child = Individual.crossover(parents[male_idx], parents[female_idx])
+                # Randomly mutate some of the individuals
+                if self.mutate_chance >= random.random():
+                    child.mutate()
+                # add to list of children
+                children += [ child ]
 
-            # Assuming they aren't the same network...
-            if male != female:
-                male = parents[male]
-                female = parents[female]
+        # add children to population
+        population = parents + children
 
-                # Breed them.
-                babies = Individual.crossover(male, female)
+        # sort population by fitness
+        population = sorted(population, key=lambda x: x.fitness(), reverse=True)
 
-                # Add the children one at a time.
-                for baby in babies:
-                    # Don't grow larger than desired length.
-                    if len(children) < desired_length:
-                        children += [ baby ]
-
-        # add children
-        parents += children
-
-        # sort by fitness
-        parents = sorted(parents, key=lambda x: x.fitness(), reverse=True)
-
-        return parents
+        return population
 
     def optimize(self, individuals, generations=100):
         # evolve all generations
-        for g in xrange(generations):
+        for g in range(generations):
+            print(f"evolving generation: {g}")
 
             # evaluate current population
             for i in individuals:
-                # let the individual live a life according to its parameters
-                i.live()
+                print(f" evaluating individual: {i}")
+                # don't evaluate again if params didn't change
+                if not i.evaluated_params or i.evaluated_params != i.params:
+                    # let the individual live a life according to its parameters
+                    # (create phenotype from genotype)
+                    i.live()
+                    # remember evaluated params
+                    i.evaluated_params = i.params
+                print(f"  score: {i.fitness()}")
 
-            print self.avg_fitness(individuals)
+            # best performer from this generation
+            best = sorted(individuals, key=lambda x: x.fitness(), reverse=True)[0]
+            # append to all-time hitlist
+            self.elite += [ best ]
+            # only keep n best individuals in all-time hitlist
+            self.elite = sorted(self.elite, key=lambda x: x.fitness(), reverse=True)
+            self.elite = self.elite[:self.elite_count]
 
-            # Evolve, except on the last iteration.
+            # generation status
+            print(
+                f" avg. fitness: {self.avg_fitness(individuals)}\n"
+                f" best: {best.fitness()}"
+            )
+
+            # check if one individual is the chosen one
+            if any([ x.finished() for x in individuals ]):
+                print(f" finishing early in generation {g}")
+                # return early
+                break
+
+            # Evolve this generation, except on the last iteration.
             if g != generations - 1:
                 individuals = self.evolve(individuals)
+
+        # Print out the top 10 networks.
+        print("last generation:")
+        print("\n".join([ str(i) for i in individuals[:self.best_count] ]))
+        print("all-time best performers:")
+        print("\n".join([ str(i) for i in self.elite[:self.elite_count] ]))
 
         # last generation
         return individuals

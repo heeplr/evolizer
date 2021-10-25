@@ -96,14 +96,22 @@ class Evolver(object):
     def __init__(self, retain=0.4, lucky_chance=0.1, mutate_chance=0.2,
                        freak_chance=0, best_count=10, elite_count=5,
                        min_childcount=1, max_childcount=1):
-        """:param retain (float): Percentage of population to retain after
-                each generation (individuals that can reproduce again)
-           :param lucky_chance (float): Probability of a rejected individual
-                to remain in the population
+        """:param retain (float): portion of population to retain after
+                each generation (fittest individuals that may reproduce again)
+                0.0 means the next generation will only contain children, no parents
+                1.0 means there will only be parents and never any children
+           :param lucky_chance (float): probability of a rejected individual
+                to remain in the population.
+                0.0 means only breed best retained parents
+                1.0 means all individuals will be retained and there will
+                be no children.
            :param mutate_chance (float): Probability of an individual to
-                be randomly mutated
+                be randomly mutated (0.0/1.0 means no/every individual will
+                have one param randomly mutated)
            :param freak_chance (float): Probability of a new completely
                 random individual to join a generation for breeding
+                0.0 means no random genotype will ever appear
+                1.0 means alls parents will be randomized before breeding
            :param best_count (int): top-n individuals to display after
                 last generation
            :param elite_count (int): groupsize of all-time best performing
@@ -121,6 +129,15 @@ class Evolver(object):
         self.max_childcount = max_childcount
         # all-time best performers
         self.elite = []
+        # all parents won't work
+        if self.retain == 1.0:
+            raise ValueError("retain rate of 1.0 means there can never be any children")
+        # no selection won't work
+        if self.lucky_chance == 1.0:
+            raise ValueError("keeping every individual for breeding would disable selection")
+        # all randomness makes no sense
+        if freak_chance = 1.0:
+            raise ValueError("100% freaks will prevent evolution")
 
     def evolve(self, population):
         """evolve one generation"""

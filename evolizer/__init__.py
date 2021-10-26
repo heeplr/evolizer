@@ -4,28 +4,30 @@ import random
 import signal
 
 
-class Individual(object):
+class Individual():
     """one individual with a genotype and phenotype"""
 
     # the genome
     PARAM_CHOICES = {}
-    param_choices = {}
 
-    def __init__(self, param_choices=None, params={}):
+
+    def __init__(self, param_choices={}, params={}):
         """
         :param param_choices: initial dictionary of parameter:possible_values
         :param params: initial dictionary of parameter:value (will be generated randomly if unset)
         """
+        # space for genome
+        self.param_choices = {}
+        # genotype of this individual
+        self.params = dict(params)
+        # place to remember params that were evaluated last so we don't
+        # evaluate the same params twice
+        self.evaluated_params = None
         # store all possible parameters
         if self.PARAM_CHOICES:
             self.param_choices = { **self.param_choices, **self.PARAM_CHOICES }
         if param_choices:
             self.param_choices = { **self.param_choices, **param_choices }
-        # place to remember params that were evaluated last so we don't
-        # evaluate the same params twice
-        self.evaluated_params = None
-        # genotype of this individual
-        self.params = params
         # got params already?
         if len(self.params) > 0:
             return
@@ -52,7 +54,6 @@ class Individual(object):
 
     def mutate(self):
         """Randomly mutate individual."""
-
         # Choose a random key.
         mutation = random.choice(list(self.param_choices.keys()))
         # Mutate one of the params.

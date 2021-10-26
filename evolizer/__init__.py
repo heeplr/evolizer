@@ -1,6 +1,7 @@
 """simple evolutionary optimizer"""
 
 import random
+import signal
 
 
 class Individual(object):
@@ -138,6 +139,8 @@ class Evolver(object):
         # all randomness makes no sense
         if freak_chance == 1.0:
             raise ValueError("100% freaks will prevent evolution")
+        # install CTL+C signal handler
+        signal.signal(signal.SIGINT, self.summary)
 
     def evolve(self, population):
         """evolve one generation"""
@@ -160,17 +163,9 @@ class Evolver(object):
         parents_length = len(parents)
         desired_length = len(population) - parents_length
 
-        # add a freak?
-        if self.freak_chance >= random.random():
-            # shuffle genome of random parent
-            # (same as removing a parent and adding a freak)
-            freak = random.choice(parents)
-            freak.shuffle()
-
         # Add children, which are bred from two random parents.
         children = []
         while len(children) < desired_length:
-
             # Get a random mom and dad.
             male_idx = random.randint(0, parents_length-1)
             female_idx = random.randint(0, parents_length-1)
@@ -189,6 +184,10 @@ class Evolver(object):
                 # Randomly mutate some of the individuals
                 if self.mutate_chance >= random.random():
                     child.mutate()
+                # add a freak?
+                if self.freak_chance >= random.random():
+                    # shuffle genome
+                    child.shuffle()
                 # add to list of children
                 children += [ child ]
 
@@ -201,12 +200,14 @@ class Evolver(object):
         return population
 
     def optimize(self, individuals, generations=100):
+        # store population
+        self.individuals = individuals
         # evolve all generations
         for g in range(generations):
             print(f"evolving generation: {g}")
 
             # evaluate current population
-            for i in individuals:
+            for i in self.individuals:
                 print(f" evaluating individual: {i}")
                 # don't evaluate again if params didn't change
                 if not i.evaluated_params or i.evaluated_params != i.params:
@@ -218,7 +219,7 @@ class Evolver(object):
                 print(f"  score: {i.fitness()}")
 
             # best performer from this generation
-            best = sorted(individuals, key=lambda x: x.fitness(), reverse=True)[0]
+            best = sorted(self.individuals, key=lambda x: x.fitness(), reverse=True)[0]
             # append to all-time hitlist
             self.elite += [ best ]
             # only keep n best individuals in all-time hitlist
@@ -227,28 +228,35 @@ class Evolver(object):
 
             # generation status
             print(
-                f" avg. fitness: {self.avg_fitness(individuals)}\n"
+                f" avg. fitness: {self.avg_fitness(self.individuals)}\n"
                 f" best: {best.fitness()}"
             )
 
             # check if one individual is the chosen one
-            if any([ x.finished() for x in individuals ]):
+            if any([ x.finished() for x in self.individuals ]):
                 print(f" finishing early in generation {g}")
                 # return early
                 break
 
             # Evolve this generation, except on the last iteration.
             if g != generations - 1:
-                individuals = self.evolve(individuals)
+                self.individuals = self.evolve(self.individuals)
 
-        # Print out the top 10 networks.
-        print("last generation:")
-        print("\n".join([ str(i) for i in individuals[:self.best_count] ]))
-        print("all-time best performers:")
-        print("\n".join([ str(i) for i in self.elite[:self.elite_count] ]))
+        # print out summary
+        self.summary()
 
         # last generation
         return individuals
+
+    def summary(self, sig=None, frame=None):
+        # Print out the top 10 networks.
+        print(f"best {self.best_count} of last generation:")
+        print("\n".join([ str(i) for i in self.individuals[:self.best_count] ]))
+        print(f"best {self.elite_count} of all-time elite:")
+        print("\n".join([ str(i) for i in self.elite[:self.elite_count] ]))
+        # if CTRL+C was pressed, exit immediately
+        if sig != None:
+            sys.exit(0)
 
     @staticmethod
     def avg_fitness(population):

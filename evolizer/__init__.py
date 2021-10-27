@@ -20,9 +20,6 @@ class Individual():
         self.param_choices = {}
         # genotype of this individual
         self.params = dict(params)
-        # place to remember params that were evaluated last so we don't
-        # evaluate the same params twice
-        self.evaluated_params = None
         # store all possible parameters
         if self.PARAM_CHOICES:
             self.param_choices = { **self.param_choices, **self.PARAM_CHOICES }
@@ -41,8 +38,8 @@ class Individual():
         """use self.params to live"""
         pass
 
-    def fitness(self):
-       """Returns fitness of this individual as float. The larger the fitter."""
+    def fitness(self, score=None):
+       """Returns/sets fitness of this individual as float. The larger the fitter."""
        raise NotImplementedError("we need a fitness() function")
 
     def finished(self):
@@ -64,6 +61,13 @@ class Individual():
         # random choice for every parameter
         for key in self.param_choices:
             self.params[key] = random.choice(self.param_choices[key])
+
+    def toJson(self):
+        """return serializable dict"""
+        return {
+            'name': self.__class__.__name__,
+            'params': self.params
+        }
 
     @staticmethod
     def crossover(mother, father):
@@ -129,6 +133,11 @@ class Evolver(object):
         self.elite_count = elite_count
         self.min_childcount = min_childcount
         self.max_childcount = max_childcount
+        # place to remember params that were evaluated last so we don't
+        # evaluate the same params twice
+        self.evaluated_params = {}
+        # current generation counter
+        self.generation = 0
         # all-time best performers
         self.elite = []
         # all parents won't work
@@ -203,20 +212,29 @@ class Evolver(object):
     def optimize(self, individuals, generations=100):
         # store population
         self.individuals = individuals
+        self.generations = generations
         # evolve all generations
-        for g in range(generations):
+        for g in range(self.generation, self.generations):
             print(f"evolving generation: {g}")
 
             # evaluate current population
             for i in self.individuals:
                 print(f" evaluating individual: {i}")
                 # don't evaluate again if params didn't change
-                if not i.evaluated_params or i.evaluated_params != i.params:
+                if not hash(str(i.params)) in self.evaluated_params or \
+                   self.evaluated_params[hash(str(i.params))]['params']!= i.params:
                     # let the individual live a life according to its parameters
                     # (create phenotype from genotype)
                     i.live()
                     # remember evaluated params
-                    i.evaluated_params = i.params
+                    self.evaluated_params[hash(str(i.params))] = {
+                        'params': i.params,
+                        'score': i.fitness()
+                    }
+                else:
+                    # store fitness for this set of params
+                    score = self.evaluated_params[hash(str(i.params))]['score']
+                    i.fitness(score)
                 print(f"  score: {i.fitness()}")
 
             # best performer from this generation
@@ -243,6 +261,9 @@ class Evolver(object):
             if g != generations - 1:
                 self.individuals = self.evolve(self.individuals)
 
+            # store current generation
+            self.generation = g
+
         # print out summary
         self.summary()
 
@@ -258,6 +279,32 @@ class Evolver(object):
         # if CTRL+C was pressed, exit immediately
         if sig != None:
             sys.exit(0)
+
+    def save(self):
+        """save current state to file"""
+        outfile = open("evolizer_last_state.json", "w")
+        config = {
+            'settings': {
+                'freak_chance': self.freak_chance,
+                'mutate_chance': self.mutate_chance,
+                'lucky_chance': self.lucky_chance,
+                'retain': self.retain,
+                'best_count': self.best_count,
+                'elite_count': self.elite_count,
+                'min_childcount': self.min_childcount,
+                'max_childcount': slef.max_childcount,
+                'generations': self.generations,
+                self.individuals[0].__class__.__name__: self.individuals[0].param_choices
+            },
+            'state': {
+                'generation': self.generation,
+                'elite': [ i.toJson() for i in self.elite ],
+                'individuals': [ i.toJson() for i in self.individuals ],
+            }
+        }
+        # save file
+        json.dump(config, outfile)
+        outfile.close()
 
     @staticmethod
     def avg_fitness(population):

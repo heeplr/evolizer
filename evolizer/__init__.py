@@ -5,7 +5,28 @@ import signal
 
 
 class Individual():
-    """one individual with a genotype and phenotype"""
+    """
+    one individual with a genotype and phenotype
+
+    create your individual as inheriting class. You must at least define
+    a fitness() method that returns a numeric value that grades the
+    instance (low = bad, high = good)
+    The genome is provided as dict of parameter and a list of choices
+    for this parameter. You can provide the genome by:
+      - defining a PARAM_CHOICES class variable
+      - passing as param_choices parameter when creating the instance
+
+      e.g.
+
+      class Critter(Individual):
+
+        PARAM_CHOICES = {
+            'mouth':          [ "big", "small", "medium" ],
+            'max_age':        range(2,15),
+            'fertility_rate': np.arange(0, 1, 0.25)
+        }
+
+    """
 
     # the genome
     PARAM_CHOICES = {}
@@ -32,20 +53,29 @@ class Individual():
         self.shuffle()
 
     def __repr__(self):
+        """printable description of this individual"""
         return f"<{self.__class__.__name__}(fitness={self.fitness()}, params=\"{self.params}\")>"
 
     def live(self):
-        """use self.params to live"""
+        """
+        use self.params to do something that can be graded afterwards
+        with fitness()
+        """
         pass
 
     def fitness(self, score=None):
-       """Returns/sets fitness of this individual as float. The larger the fitter."""
+       """
+       Returns/initializes fitness score of this individual.
+       The larger the fitter.
+       :param score: if != None, initialize new fitness value using score
+       :result: current fitness value
+       """
        raise NotImplementedError("we need a fitness() function")
 
     def finished(self):
         """
         check if we can finish early
-        :result: true if this individual is perfect, false to carry on
+        :result: true if this individual is perfect, false to carry on evolving
         """
         return False
 
@@ -57,7 +87,7 @@ class Individual():
         self.params[mutation] = random.choice(self.param_choices[mutation])
 
     def shuffle(self):
-        """create new random genome (params) from genes (param_choices)"""
+        """create new random genotype (params) from genome (param_choices)"""
         # random choice for every parameter
         for key in self.param_choices:
             self.params[key] = random.choice(self.param_choices[key])
@@ -218,8 +248,8 @@ class Evolver(object):
             print(f"evolving generation: {g}")
 
             # evaluate current population
-            for i in self.individuals:
-                print(f" evaluating individual: {i}")
+            for n, i in enumerate(self.individuals):
+                print(f" evaluating individual {n}: {i}")
                 # don't evaluate again if params didn't change
                 if not hash(str(i.params)) in self.evaluated_params or \
                    self.evaluated_params[hash(str(i.params))]['params']!= i.params:

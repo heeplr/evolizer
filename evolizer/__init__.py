@@ -72,7 +72,7 @@ class Individual():
        """
        raise NotImplementedError("we need a fitness() function")
 
-    def finished(self):
+    def canStopEarly(self):
         """
         check if we can finish early
         :result: true if this individual is perfect, false to carry on evolving
@@ -282,7 +282,7 @@ class Evolver(object):
             )
 
             # check if one individual is the chosen one
-            if any([ x.finished() for x in self.individuals ]):
+            if any([ x.canStopEarly() for x in self.individuals ]):
                 print(f" finishing early in generation {g}")
                 # return early
                 break

@@ -50,7 +50,7 @@ class Individual():
         if len(self.params) > 0:
             return
         # create new random genotype
-        self.shuffle()
+        self.randomize()
 
     def __repr__(self):
         """printable description of this individual"""
@@ -86,7 +86,7 @@ class Individual():
         # Mutate one of the params.
         self.params[mutation] = random.choice(self.param_choices[mutation])
 
-    def shuffle(self):
+    def randomize(self):
         """create new random genotype (params) from genome (param_choices)"""
         # random choice for every parameter
         for key in self.param_choices:
@@ -226,8 +226,8 @@ class Evolver(object):
                     child.mutate()
                 # add a freak?
                 if self.freak_chance >= random.random():
-                    # shuffle genome
-                    child.shuffle()
+                    # shuffle genotype
+                    child.randomize()
                 # add to list of children
                 children += [ child ]
 

@@ -340,7 +340,15 @@ class Evolver():
         # last generation
         return individuals
 
-
+    def summary(self, sig=None, frame=None):
+        # Print out the top 10 networks.
+        print(f"best {self.best_count} of last generation:")
+        print("\n".join([ str(i) for i in self.individuals[:self.best_count] ]))
+        print(f"best {self.elite_count} of all-time elite:")
+        print("\n".join([ str(i) for i in self.elite[:self.elite_count] ]))
+        # if CTRL+C was pressed, exit immediately
+        if sig != None:
+            sys.exit(0)
 
     def save(self):
         """save current state to file"""

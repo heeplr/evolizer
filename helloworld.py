@@ -68,7 +68,7 @@ class HelloGreeter(Individual):
 
     def finished(self):
         """return true if we got perfect result"""
-        return bool(all([
+        return all([
             self.params['0'] == 'h',
             self.params['1'] == 'e',
             self.params['2'] == 'l',
@@ -79,7 +79,7 @@ class HelloGreeter(Individual):
             self.params['7'] == 'r',
             self.params['8'] == 'l',
             self.params['9'] == 'd'
-        ]))
+        ])
 
 if __name__ == '__main__':
     generations = 1000  # Number of times to evole/breed the population.

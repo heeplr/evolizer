@@ -263,6 +263,7 @@ class Evolver():
 
     def optimize(self, individuals, generations=100, optimum_score=float("Inf")):
         """optimize population of individuals for n generations"""
+        self.optimum_score = optimum_score
         # store population
         self.individuals = individuals
         self.generations = generations
@@ -289,16 +290,16 @@ class Evolver():
                     # store fitness for this set of params
                     score = self.evaluated_params[hash(str(i.params))]['score']
                     i.fitness(score)
-                # abort on optimum fitness
-                if i.fitness() >= optimum_score:
+                # abort early?
+                if self.abort(i):
                     break
 
                 print(f"  score: {i.fitness()}")
 
-            # abort on optimum fitness
-            if i.fitness() >= optimum_score:
-                print(f"optimum score reached: {optimum_score}")
+            # abort early?
+            if self.abort(i):
                 break
+
             # best performer from this generation
             best = sorted(self.individuals, key=lambda x: x.fitness(), reverse=True)[0]
             # append to all-time hitlist
@@ -339,6 +340,16 @@ class Evolver():
 
         # last generation
         return individuals
+
+    def abort(self, individual):
+        """check individual if it matches abort-early criteria"""
+        if individual.fitness() >= self.optimum_score:
+            print(f"optimum score reached: {self.optimum_score}")
+            return True
+        if hasattr(individual, "finished") and individual.finished():
+            print(f"finished")
+            return True
+        return False
 
     def summary(self, sig=None, frame=None):
         # Print out the top 10 networks.

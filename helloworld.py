@@ -32,7 +32,7 @@ class HelloGreeter(Individual):
             self.params['9']
         )
 
-    def fitness(self):
+    def fitness(self, score=None):
         neg_fitness = 0
         # calculate deviation from goal
         params = [
@@ -95,4 +95,3 @@ if __name__ == '__main__':
 
     # run evolver
     individuals = evolver.optimize(individuals, generations)
-

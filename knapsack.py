@@ -12,7 +12,7 @@ class KnapSack(Individual):
         3: [ { 'weight': 30, 'value': 120 }, {} ]
     }
 
-    def fitness(self):
+    def fitness(self, score=None):
         """grade sack"""
         total_weight = sum([
             item['weight'] if 'weight' in item else 0 for item in self.params.values()
@@ -40,5 +40,3 @@ if __name__ == '__main__':
 
     # run evolver
     individuals = evolver.optimize(individuals, generations)
-
-

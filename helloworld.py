@@ -91,7 +91,7 @@ if __name__ == '__main__':
         individuals += [ HelloGreeter() ]
 
     # create evolver
-    evolver = Evolver(retain=0.4, lucky_chance=0.1, mutate_chance=0.2)
+    evolver = Evolver(retain=0.4, lucky_chance=0.1, mutate_chance=0.5)
 
     # run evolver
     individuals = evolver.optimize(individuals, generations)

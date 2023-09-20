@@ -1,7 +1,8 @@
 """simple evolutionary optimizer"""
 
+import json
 import random
-import signal
+import sys
 
 
 class Individual():
@@ -56,6 +57,12 @@ class Individual():
         """printable description of this individual"""
         return f"<{self.__class__.__name__}(fitness={self.fitness()}, params=\"{self.params}\")>"
 
+    def __eq__(self, other):
+        return self.params == other.params
+
+    def __hash__(self):
+        return hash(json.dumps(self.params, sort_keys=True))
+
     def live(self):
         """
         use self.params to do something that can be graded afterwards
@@ -64,13 +71,13 @@ class Individual():
         pass
 
     def fitness(self, score=None):
-       """
-       Returns/initializes fitness score of this individual.
-       The larger the fitter.
-       :param score: if != None, initialize new fitness value using score
-       :result: current fitness value
-       """
-       raise NotImplementedError("we need a fitness() function")
+        """
+        Returns/initializes fitness score of this individual.
+        The larger the fitter.
+        :param score: if != None, initialize new fitness value using score
+        :result: current fitness value
+        """
+        raise NotImplementedError("we need a fitness() function")
 
     def canStopEarly(self):
         """
@@ -83,8 +90,16 @@ class Individual():
         """Randomly mutate individual."""
         # Choose a random key.
         mutation = random.choice(list(self.param_choices.keys()))
-        # Mutate one of the params.
-        self.params[mutation] = random.choice(self.param_choices[mutation])
+        # intermediary
+        if isinstance(self.params[mutation], int):
+            # random portion between -25% and +25%
+            alteration = random.uniform(-0.05, 0.05) * self.params[mutation]
+            # alter choice
+            self.params[mutation] += int(alteration)
+        # codominant
+        else:
+            # set new choice for param
+            self.params[mutation] = random.choice(self.param_choices[mutation])
 
     def randomize(self):
         """create new random genotype (params) from genome (param_choices)"""
@@ -115,9 +130,18 @@ class Individual():
 
         # Loop through the parameters and pick params for the kid.
         for param in mother.param_choices:
-            child_params[param] = random.choice(
-                [mother.params[param], father.params[param]]
-            )
+            # intermediary
+            if isinstance(mother.params[param], int):
+                # child is average of mother and father
+                child_params[param] = int((
+                    mother.params[param] + father.params[param]
+                )/2)
+            # codominant
+            else:
+                # child is either mother or father
+                child_params[param] = random.choice(
+                    [mother.params[param], father.params[param]]
+                )
 
         # Now create a new Indidvidual object.
         child = mother.__class__(
@@ -126,11 +150,11 @@ class Individual():
         return child
 
 
-class Evolver(object):
+class Evolver():
     """genetic algorithm evolution helper class"""
 
     def __init__(self, retain=0.4, lucky_chance=0.1, mutate_chance=0.2,
-                       freak_chance=0, best_count=10, elite_count=5,
+                       freak_chance=0, best_count=5, elite_count=5,
                        min_childcount=1, max_childcount=1):
         """:param retain (float): portion of population to retain after
                 each generation (fittest individuals that may reproduce again)
@@ -179,8 +203,6 @@ class Evolver(object):
         # all randomness makes no sense
         if freak_chance == 1.0:
             raise ValueError("100% freaks will prevent evolution")
-        # install CTL+C signal handler
-        signal.signal(signal.SIGINT, self.summary)
 
     def evolve(self, population):
         """evolve one generation"""
@@ -196,7 +218,7 @@ class Evolver(object):
 
         # For those we aren't keeping, randomly keep some anyway.
         for individual in graded[retain_length:]:
-            if self.lucky_chance > random.random():
+            if  random.random() < self.lucky_chance:
                 parents +=  [ individual ]
 
         # Now find out how many childre we need to meet population goal
@@ -222,10 +244,10 @@ class Evolver(object):
                 # breed new individual
                 child = Individual.crossover(parents[male_idx], parents[female_idx])
                 # Randomly mutate some of the individuals
-                if self.mutate_chance >= random.random():
+                if random.random() < self.mutate_chance:
                     child.mutate()
                 # add a freak?
-                if self.freak_chance >= random.random():
+                if random.random() < self.freak_chance:
                     # shuffle genotype
                     child.randomize()
                 # add to list of children
@@ -239,13 +261,15 @@ class Evolver(object):
 
         return population
 
-    def optimize(self, individuals, generations=100):
+    def optimize(self, individuals, generations=100, optimum_score=float("Inf")):
+        """optimize population of individuals for n generations"""
         # store population
         self.individuals = individuals
         self.generations = generations
         # evolve all generations
         for g in range(self.generation, self.generations):
             print(f"evolving generation: {g}")
+
 
             # evaluate current population
             for n, i in enumerate(self.individuals):
@@ -265,8 +289,16 @@ class Evolver(object):
                     # store fitness for this set of params
                     score = self.evaluated_params[hash(str(i.params))]['score']
                     i.fitness(score)
+                # abort on optimum fitness
+                if i.fitness() >= optimum_score:
+                    break
+
                 print(f"  score: {i.fitness()}")
 
+            # abort on optimum fitness
+            if i.fitness() >= optimum_score:
+                print(f"optimum score reached: {optimum_score}")
+                break
             # best performer from this generation
             best = sorted(self.individuals, key=lambda x: x.fitness(), reverse=True)[0]
             # append to all-time hitlist
@@ -282,10 +314,18 @@ class Evolver(object):
             )
 
             # check if one individual is the chosen one
-            if any([ x.canStopEarly() for x in self.individuals ]):
+            if any([ i.canStopEarly() for i in self.individuals ]):
                 print(f" finishing early in generation {g}")
                 # return early
                 break
+
+            # if we reached a local maximum, start over
+            # (if more than 90% of individuals have the same fitness as the best individual)
+            if len([ i for i in self.individuals if i.fitness() == self.individuals[0].fitness() ]) / len(self.individuals) >= 0.9:
+                print(f"starting over")
+                # randomize all individuals
+                for i in self.individuals:
+                    i.randomize()
 
             # Evolve this generation, except on the last iteration.
             if g != generations - 1:
@@ -300,15 +340,7 @@ class Evolver(object):
         # last generation
         return individuals
 
-    def summary(self, sig=None, frame=None):
-        # Print out the top 10 networks.
-        print(f"best {self.best_count} of last generation:")
-        print("\n".join([ str(i) for i in self.individuals[:self.best_count] ]))
-        print(f"best {self.elite_count} of all-time elite:")
-        print("\n".join([ str(i) for i in self.elite[:self.elite_count] ]))
-        # if CTRL+C was pressed, exit immediately
-        if sig != None:
-            sys.exit(0)
+
 
     def save(self):
         """save current state to file"""
@@ -322,7 +354,7 @@ class Evolver(object):
                 'best_count': self.best_count,
                 'elite_count': self.elite_count,
                 'min_childcount': self.min_childcount,
-                'max_childcount': slef.max_childcount,
+                'max_childcount': self.max_childcount,
                 'generations': self.generations,
                 self.individuals[0].__class__.__name__: self.individuals[0].param_choices
             },
